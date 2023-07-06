@@ -6,10 +6,12 @@ import usersFromServer from './api/users';
 import categoriesFromServer from './api/categories';
 import productsFromServer from './api/products';
 
-function getFilteredProducts(products, query, selectedUserId) {
+function getFilteredProducts(
+  products, query, selectedUserId, selectedCategory,
+) {
   let filteredProducts = [...products];
 
-  if (!query && !selectedUserId) {
+  if (!query && !selectedUserId && selectedCategory.length === 0) {
     return filteredProducts;
   }
 
@@ -20,6 +22,13 @@ function getFilteredProducts(products, query, selectedUserId) {
 
       return productName.includes(queryLowerCase);
     });
+  }
+
+  if (selectedCategory.length > 0) {
+    filteredProducts = filteredProducts.filter(
+      product => selectedCategory.includes(product.category.title),
+
+    );
   }
 
   if (selectedUserId) {
@@ -50,7 +59,7 @@ export const App = () => {
   const [selectedCategory, setSelectedCategory] = useState([]);
 
   const visibleProducts = getFilteredProducts(
-    products, query.trim(), selectedUserId,
+    products, query.trim(), selectedUserId, selectedCategory,
   );
 
   const onResetAllFilters = () => {
@@ -60,7 +69,13 @@ export const App = () => {
   };
 
   const onCategoryClick = (category) => {
-    setSelectedCategory(currentCategory => [...currentCategory, category]);
+    if (selectedCategory.includes(category)) {
+      setSelectedCategory(currentCategory => currentCategory.filter(
+        current => current !== category,
+      ));
+    } else {
+      setSelectedCategory(currentCategory => [...currentCategory, category]);
+    }
   };
 
   return (
@@ -131,7 +146,10 @@ export const App = () => {
               <a
                 href="#/"
                 data-cy="AllCategories"
-                className="button is-success mr-6 is-outlined"
+                className={
+                  cn('button is-success mr-6 ',
+                    { 'is-outlined': selectedCategory.length > 0 })
+                }
                 onClick={() => setSelectedCategory([])}
               >
                 All
