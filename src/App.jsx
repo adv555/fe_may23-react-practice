@@ -6,17 +6,13 @@ import usersFromServer from './api/users';
 import categoriesFromServer from './api/categories';
 import productsFromServer from './api/products';
 
-function getFilteredProducts(
-  products, query, selectedUserId, selectedCategory,
+function getVisibleProducts(
+  products, query, selectedUserId, selectedCategory, sortType, isReversed,
 ) {
-  let filteredProducts = [...products];
-
-  if (!query && !selectedUserId && selectedCategory.length === 0) {
-    return filteredProducts;
-  }
+  let visibleProducts = [...products];
 
   if (query) {
-    filteredProducts = filteredProducts.filter((product) => {
+    visibleProducts = visibleProducts.filter((product) => {
       const productName = product.name.toLowerCase();
       const queryLowerCase = query.toLowerCase();
 
@@ -25,19 +21,60 @@ function getFilteredProducts(
   }
 
   if (selectedCategory.length > 0) {
-    filteredProducts = filteredProducts.filter(
+    visibleProducts = visibleProducts.filter(
       product => selectedCategory.includes(product.category.title),
-
     );
   }
 
   if (selectedUserId) {
-    filteredProducts = filteredProducts.filter(
+    visibleProducts = visibleProducts.filter(
       product => product.user.id === selectedUserId,
     );
   }
 
-  return filteredProducts;
+  /**  Solution with if
+
+  if (sortType === 'ID') {
+    visibleProducts = visibleProducts.sort((id1, id2) => id1.id - id2.id);
+  }
+
+  if (['Products', 'Category', 'User'].includes(sortType)) {
+    visibleProducts = visibleProducts.sort((product1, product2) => {
+      const firstValue = product1[sortType]?.title || product1[sortType]?.name;
+      const secondValue = product2[sortType]?.title || product2[sortType]?.name;
+
+      return firstValue?.localeCompare(secondValue);
+    });
+  }
+  */
+
+  // Solution with switch
+  if (sortType) {
+    visibleProducts.sort((prA, prB) => {
+      switch (sortType) {
+        case 'ID':
+          return prA.id - prB.id;
+
+        case 'Product':
+          return prA.name.localeCompare(prB.name);
+
+        case 'Category':
+          return prA.category.title.localeCompare(prB.category.title);
+
+        case 'User':
+          return prA.user.name.localeCompare(prB.user.name);
+
+        default:
+          return 0;
+      }
+    });
+  }
+
+  if (isReversed) {
+    visibleProducts = visibleProducts.reverse();
+  }
+
+  return visibleProducts;
 }
 
 export const App = () => {
@@ -57,15 +94,24 @@ export const App = () => {
   const [query, setQuery] = useState('');
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState([]);
+  const [sortType, setSortType] = useState('');
+  const [isReversed, setIsReversed] = useState(false);
 
-  const visibleProducts = getFilteredProducts(
-    products, query.trim(), selectedUserId, selectedCategory,
+  const visibleProducts = getVisibleProducts(
+    products,
+    query.trim(),
+    selectedUserId,
+    selectedCategory,
+    sortType,
+    isReversed,
   );
 
   const onResetAllFilters = () => {
     setQuery('');
     setSelectedUserId(null);
     setSelectedCategory([]);
+    setSortType('');
+    setIsReversed(false);
   };
 
   const onCategoryClick = (category) => {
@@ -77,6 +123,31 @@ export const App = () => {
       setSelectedCategory(currentCategory => [...currentCategory, category]);
     }
   };
+
+  function sortBy(newSortType) {
+    const firstClick = newSortType !== sortType;
+    const secondClick = newSortType === sortType && !isReversed;
+    const thirdClick = newSortType === sortType && isReversed;
+
+    if (firstClick) {
+      setSortType(newSortType);
+      setIsReversed(false);
+
+      return;
+    }
+
+    if (secondClick) {
+      setSortType(newSortType);
+      setIsReversed(true);
+
+      return;
+    }
+
+    if (thirdClick) {
+      setSortType('');
+      setIsReversed(false);
+    }
+  }
 
   return (
     <div className="section">
@@ -203,9 +274,20 @@ export const App = () => {
                   <span className="is-flex is-flex-wrap-nowrap">
                     ID
 
-                    <a href="#/">
+                    <a
+                      href="#/"
+                      onClick={() => sortBy('ID')}
+                    >
                       <span className="icon">
-                        <i data-cy="SortIcon" className="fas fa-sort" />
+                        <i
+                          data-cy="SortIcon"
+                          // className="fas fa-sort"
+                          className={cn('fas', {
+                            'fa-sort': sortType !== 'ID',
+                            'fa-sort-down': sortType === 'ID' && isReversed,
+                            'fa-sort-up': sortType === 'ID' && !isReversed,
+                          })}
+                        />
                       </span>
                     </a>
                   </span>
@@ -215,9 +297,21 @@ export const App = () => {
                   <span className="is-flex is-flex-wrap-nowrap">
                     Product
 
-                    <a href="#/">
+                    <a
+                      href="#/"
+                      onClick={() => sortBy('Products')}
+                    >
                       <span className="icon">
-                        <i data-cy="SortIcon" className="fas fa-sort-down" />
+                        <i
+                          data-cy="SortIcon"
+                          className={cn('fas', {
+                            'fa-sort': sortType !== 'Products',
+                            'fa-sort-down': sortType === 'Products'
+                              && isReversed,
+                            'fa-sort-up': sortType === 'Products'
+                              && !isReversed,
+                          })}
+                        />
                       </span>
                     </a>
                   </span>
@@ -227,9 +321,22 @@ export const App = () => {
                   <span className="is-flex is-flex-wrap-nowrap">
                     Category
 
-                    <a href="#/">
+                    <a
+                      href="#/"
+                      onClick={() => sortBy('Category')}
+                    >
                       <span className="icon">
-                        <i data-cy="SortIcon" className="fas fa-sort-up" />
+                        <i
+                          data-cy="SortIcon"
+                          className={cn('fas', {
+                            'fa-sort': sortType !== 'Category',
+                            'fa-sort-down': sortType === 'Category'
+                                && isReversed,
+                            'fa-sort-up': sortType === 'Category'
+                                && !isReversed,
+                          })}
+
+                        />
                       </span>
                     </a>
                   </span>
@@ -239,9 +346,21 @@ export const App = () => {
                   <span className="is-flex is-flex-wrap-nowrap">
                     User
 
-                    <a href="#/">
+                    <a
+                      href="#/"
+                      onClick={() => sortBy('User')}
+                    >
                       <span className="icon">
-                        <i data-cy="SortIcon" className="fas fa-sort" />
+                        <i
+                          data-cy="SortIcon"
+                          className={cn('fas', {
+                            'fa-sort': sortType !== 'User',
+                            'fa-sort-down': sortType === 'User'
+                                && isReversed,
+                            'fa-sort-up': sortType === 'User'
+                                && !isReversed,
+                          })}
+                        />
                       </span>
                     </a>
                   </span>
@@ -266,8 +385,8 @@ export const App = () => {
                   <td
                     data-cy="ProductUser"
                     className={cn({
-                      'has-text-danger': product.user.sex === 'f',
-                      'has-text-link': product.user.sex === 'm',
+                      'has-text-danger': product.user?.sex === 'f',
+                      'has-text-link': product.user?.sex === 'm',
                     })}
                   >
                     {product.user.name}
