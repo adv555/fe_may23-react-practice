@@ -5,18 +5,19 @@ import cn from 'classnames';
 import usersFromServer from './api/users';
 import categoriesFromServer from './api/categories';
 import productsFromServer from './api/products';
+import { ProductTable } from './components/ProductsTable';
 
 function getVisibleProducts(
-  products, query, selectedUserId, selectedCategory, sortType, isReversed,
+  products, { query, selectedUserId, selectedCategory, sortType, isReversed },
 ) {
   let visibleProducts = [...products];
 
   if (query) {
     visibleProducts = visibleProducts.filter((product) => {
       const productName = product.name.toLowerCase();
-      const queryLowerCase = query.toLowerCase();
+      const normalizedQuery = query.trim().toLowerCase();
 
-      return productName.includes(queryLowerCase);
+      return productName.includes(normalizedQuery);
     });
   }
 
@@ -99,11 +100,13 @@ export const App = () => {
 
   const visibleProducts = getVisibleProducts(
     products,
-    query.trim(),
-    selectedUserId,
-    selectedCategory,
-    sortType,
-    isReversed,
+    {
+      query,
+      selectedUserId,
+      selectedCategory,
+      sortType,
+      isReversed,
+    },
   );
 
   const onResetAllFilters = () => {
@@ -123,31 +126,6 @@ export const App = () => {
       setSelectedCategory(currentCategory => [...currentCategory, category]);
     }
   };
-
-  function sortBy(newSortType) {
-    const firstClick = newSortType !== sortType;
-    const secondClick = newSortType === sortType && !isReversed;
-    const thirdClick = newSortType === sortType && isReversed;
-
-    if (firstClick) {
-      setSortType(newSortType);
-      setIsReversed(false);
-
-      return;
-    }
-
-    if (secondClick) {
-      setSortType(newSortType);
-      setIsReversed(true);
-
-      return;
-    }
-
-    if (thirdClick) {
-      setSortType('');
-      setIsReversed(false);
-    }
-  }
 
   return (
     <div className="section">
@@ -193,7 +171,7 @@ export const App = () => {
                   className="input"
                   placeholder="Search"
                   value={query}
-                  onChange={e => setQuery(e.target.value)}
+                  onChange={event => setQuery(event.target.value)}
                 />
 
                 <span className="icon is-left">
@@ -255,146 +233,21 @@ export const App = () => {
         </div>
 
         <div className="box table-container">
-          {
-            visibleProducts.length === 0 && (
+
+          {visibleProducts.length === 0 && (
             <p data-cy="NoMatchingMessage">
               No products matching selected criteria
             </p>
-            )
-          }
+          )}
 
-          { visibleProducts.length > 0 && (
-          <table
-            data-cy="ProductTable"
-            className="table is-striped is-narrow is-fullwidth"
-          >
-            <thead>
-              <tr>
-                <th>
-                  <span className="is-flex is-flex-wrap-nowrap">
-                    ID
-
-                    <a
-                      href="#/"
-                      onClick={() => sortBy('ID')}
-                    >
-                      <span className="icon">
-                        <i
-                          data-cy="SortIcon"
-                          // className="fas fa-sort"
-                          className={cn('fas', {
-                            'fa-sort': sortType !== 'ID',
-                            'fa-sort-down': sortType === 'ID' && isReversed,
-                            'fa-sort-up': sortType === 'ID' && !isReversed,
-                          })}
-                        />
-                      </span>
-                    </a>
-                  </span>
-                </th>
-
-                <th>
-                  <span className="is-flex is-flex-wrap-nowrap">
-                    Product
-
-                    <a
-                      href="#/"
-                      onClick={() => sortBy('Products')}
-                    >
-                      <span className="icon">
-                        <i
-                          data-cy="SortIcon"
-                          className={cn('fas', {
-                            'fa-sort': sortType !== 'Products',
-                            'fa-sort-down': sortType === 'Products'
-                              && isReversed,
-                            'fa-sort-up': sortType === 'Products'
-                              && !isReversed,
-                          })}
-                        />
-                      </span>
-                    </a>
-                  </span>
-                </th>
-
-                <th>
-                  <span className="is-flex is-flex-wrap-nowrap">
-                    Category
-
-                    <a
-                      href="#/"
-                      onClick={() => sortBy('Category')}
-                    >
-                      <span className="icon">
-                        <i
-                          data-cy="SortIcon"
-                          className={cn('fas', {
-                            'fa-sort': sortType !== 'Category',
-                            'fa-sort-down': sortType === 'Category'
-                                && isReversed,
-                            'fa-sort-up': sortType === 'Category'
-                                && !isReversed,
-                          })}
-
-                        />
-                      </span>
-                    </a>
-                  </span>
-                </th>
-
-                <th>
-                  <span className="is-flex is-flex-wrap-nowrap">
-                    User
-
-                    <a
-                      href="#/"
-                      onClick={() => sortBy('User')}
-                    >
-                      <span className="icon">
-                        <i
-                          data-cy="SortIcon"
-                          className={cn('fas', {
-                            'fa-sort': sortType !== 'User',
-                            'fa-sort-down': sortType === 'User'
-                                && isReversed,
-                            'fa-sort-up': sortType === 'User'
-                                && !isReversed,
-                          })}
-                        />
-                      </span>
-                    </a>
-                  </span>
-                </th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {visibleProducts.map(product => (
-                <tr key={product.id} data-cy="Product">
-                  <td className="has-text-weight-bold" data-cy="ProductId">
-                    {product.id}
-                  </td>
-
-                  <td data-cy="ProductName">{ product.name}</td>
-                  <td data-cy="ProductCategory">
-                    {
-                    `${product.category.icon} - ${product.category.title}`
-                  }
-                  </td>
-
-                  <td
-                    data-cy="ProductUser"
-                    className={cn({
-                      'has-text-danger': product.user?.sex === 'f',
-                      'has-text-link': product.user?.sex === 'm',
-                    })}
-                  >
-                    {product.user.name}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {visibleProducts.length > 0 && (
+            <ProductTable
+              products={visibleProducts}
+              sortType={sortType}
+              isReversed={isReversed}
+              onSortTypeChange={setSortType}
+              onIsReversedChange={setIsReversed}
+            />
           )}
         </div>
       </div>
